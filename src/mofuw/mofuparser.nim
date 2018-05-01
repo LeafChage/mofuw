@@ -72,26 +72,26 @@ proc mpParseRequest*(req: ptr char, mhr: MPHTTPReq): int =
   mhr.httpMethodLen = 0
   mhr.pathLen = 0
   mhr.headerLen = 0
-  
+
   # address of first char of request char[]
   var buf = cast[int](req)
-  
+
   # need headers object into array
   var hdlen = 0
 
   # METHOD check
   var start = buf
   while true:
-    let uchar = cast[ptr char](buf)[]
+    case cast[ptr char](buf)[]
     # nil check
-    if uchar == '\0':
+    of '\0':
       return -1
-    # space chck
-    elif uchar == '\32':
+    # space check
+    of '\32':
       buf += 1
       break
     # non printable check
-    elif uchar < '\32' or uchar > '\127':
+    of '\1'..'\31', '\127'..'\255' :
       return -1
     else:
       buf += 1
@@ -102,19 +102,20 @@ proc mpParseRequest*(req: ptr char, mhr: MPHTTPReq): int =
   # PATH check
   start = buf
   while true:
-    let uchar = cast[ptr char](buf)[]
+    case cast[ptr char](buf)[]
     # nil check
-    if uchar == '\0':
+    of '\0':
       return -1
-    # space chck
-    elif uchar == '\32':
+    # space check
+    of '\32':
       buf += 1
       break
     # non printable check
-    elif uchar < '\32' or uchar > '\127':
+    of '\1'..'\31', '\127'..'\255' :
       return -1
     else:
       buf += 1
+
 
   mhr.path = cast[ptr char](start)
   mhr.pathLen = buf - start - 2
@@ -185,9 +186,7 @@ proc mpParseRequest*(req: ptr char, mhr: MPHTTPReq): int =
         break
     # LF check
     elif uchar == '\10':
-      if cast[ptr char](buf)[] == '\10':
-        break
-      buf += 1
+      break
     # non space and non tab check
     elif not(uchar == '\32') and not(uchar == '\9'):
       # HEADER key check
@@ -222,18 +221,15 @@ proc mpParseRequest*(req: ptr char, mhr: MPHTTPReq): int =
 
       while true:
         let uchar = cast[ptr char](buf)[]
+        case uchar
         # nil check
-        if uchar == '\0':
+        of '\0':
           return -1
         # non printable check
-        elif (uchar.int < 32) and not(uchar == '\9') or uchar == '\127':
-          # if CR, header line will end
-          if uchar == '\13':
-            break
-          elif uchar == '\10':
-            break
-          else:
-            return -1
+        of '\10', '\13':
+          break
+        of '\1'..'\8', '\11'..'\12', '\14'..'\31', '\127':
+          return -1
         else:
           buf += 1
 
@@ -247,7 +243,7 @@ proc mpParseRequest*(req: ptr char, mhr: MPHTTPReq): int =
 when isMainModule:
   import times
 
-  var 
+  var
     test = "GET /test HTTP/1.1\r\LHost: 127.0.0.1:8080\r\LConnection: keep-alive\r\LCache-Control: max-age=0\r\LAccept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\LUser-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.17 (KHTML, like Gecko) Chrome/24.0.1312.56 Safari/537.17\r\LAccept-Encoding: gzip,deflate,sdch\r\LAccept-Language: en-US,en;q=0.8\r\LAccept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.3\r\LCookie: name=mofuparser\r\L\r\Ltest=hoge"
 
     mpr = MPHTTPReq()
